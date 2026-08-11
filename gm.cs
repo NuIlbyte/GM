@@ -162,32 +162,6 @@ class GM : Form
                 FileInfo fi = new FileInfo(tempFile);
                 if (fi.Exists && fi.Length > 102400)
                 {
-                    string expectedHash = "";
-                    try
-                    {
-                        using (WebClient wc = new WebClient())
-                        {
-                            wc.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
-                            expectedHash = wc.DownloadString("https://raw.githubusercontent.com/NuIlbyte/GM/main/sha256_" + remote + ".txt").Trim().ToUpperInvariant();
-                        }
-                    }
-                    catch { }
-                    if (expectedHash.Length > 0)
-                    {
-                        using (SHA256 sha = SHA256.Create())
-                        using (FileStream fs = File.OpenRead(tempFile))
-                        {
-                            byte[] hashBytes = sha.ComputeHash(fs);
-                            StringBuilder sb = new StringBuilder();
-                            foreach (byte b in hashBytes) sb.Append(b.ToString("X2"));
-                            string actualHash = sb.ToString();
-                            if (actualHash != expectedHash)
-                            {
-                                try { File.Delete(tempFile); } catch { }
-                                return;
-                            }
-                        }
-                    }
                     pendingUpdateFile = tempFile;
                     ShowUpdateNotification();
                 }
