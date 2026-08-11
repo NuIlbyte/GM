@@ -136,7 +136,7 @@ class GM : Form
             string remote = "";
             using (var wc = new WebClient())
             {
-                wc.Headers.Add("User-Agent", "GM-UpdateChecker");
+                wc.Headers.Add("User-Agent", "Mozilla/5.0");
                 remote = wc.DownloadString(updateUrl).Trim();
             }
             if (IsNewerVersion(remote, currentVersion))
@@ -148,7 +148,7 @@ class GM : Form
                 {
                     using (var wc = new WebClient())
                     {
-                        wc.Headers.Add("User-Agent", "GM-UpdateChecker");
+                        wc.Headers.Add("User-Agent", "Mozilla/5.0");
                         wc.DownloadFile(downloadUrl, tempFile);
                     }
                     FileInfo fi = new FileInfo(tempFile);
@@ -156,6 +156,10 @@ class GM : Form
                     {
                         pendingUpdateFile = tempFile;
                         ShowUpdateNotification();
+                    }
+                    else
+                    {
+                        try { File.Delete(tempFile); } catch { }
                     }
                 }
                 catch { }
@@ -180,13 +184,17 @@ class GM : Form
                     {
                         foreach (Control c in f.Controls)
                         {
-                            if (c is Label && c.Text != null && c.Text.Contains("Ready"))
+                            if (c is Label)
                             {
-                                c.Text = "Update v" + remoteVersion + " downloaded! Click to restart.";
-                                c.ForeColor = Color.FromArgb(0, 200, 100);
-                                c.Cursor = Cursors.Hand;
-                                c.Click += (s, e) => ApplyUpdateAndRestart();
-                                break;
+                                Label lbl = (Label)c;
+                                if (lbl.Text == "Ready")
+                                {
+                                    lbl.Text = "Update v" + remoteVersion + " ready! Click here to restart.";
+                                    lbl.ForeColor = Color.FromArgb(0, 200, 100);
+                                    lbl.Cursor = Cursors.Hand;
+                                    lbl.Click += (s, e) => ApplyUpdateAndRestart();
+                                    break;
+                                }
                             }
                         }
                     }
