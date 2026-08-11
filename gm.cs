@@ -127,18 +127,71 @@ class GM : Form
         SaveStats();
     }
 
-    static void CheckForUpdates()
+    static string pendingUpdateFile = "";
+
+    static void AutoUpdateCheck()
     {
         try
         {
+            string remote = "";
             using (var wc = new WebClient())
             {
                 wc.Headers.Add("User-Agent", "GM-UpdateChecker");
-                remoteVersion = wc.DownloadString(updateUrl).Trim();
+                remote = wc.DownloadString(updateUrl).Trim();
             }
-            if (IsNewerVersion(remoteVersion, currentVersion))
+            if (IsNewerVersion(remote, currentVersion))
             {
+                remoteVersion = remote;
                 updateAvailable = true;
+                string tempFile = Path.Combine(Path.GetTempPath(), "gm_update_" + remote + ".exe");
+                try
+                {
+                    using (var wc = new WebClient())
+                    {
+                        wc.Headers.Add("User-Agent", "GM-UpdateChecker");
+                        wc.DownloadFile(downloadUrl, tempFile);
+                    }
+                    FileInfo fi = new FileInfo(tempFile);
+                    if (fi.Exists && fi.Length > 102400)
+                    {
+                        pendingUpdateFile = tempFile;
+                        ShowUpdateNotification();
+                    }
+                }
+                catch { }
+            }
+        }
+        catch { }
+    }
+
+    static void ShowUpdateNotification()
+    {
+        try
+        {
+            foreach (Form f in Application.OpenForms)
+            {
+                if (f is Hub)
+                {
+                    if (f.InvokeRequired)
+                    {
+                        f.Invoke((Action)(() => ShowUpdateNotification()));
+                    }
+                    else
+                    {
+                        foreach (Control c in f.Controls)
+                        {
+                            if (c is Label && c.Text != null && c.Text.Contains("Ready"))
+                            {
+                                c.Text = "Update v" + remoteVersion + " downloaded! Click to restart.";
+                                c.ForeColor = Color.FromArgb(0, 200, 100);
+                                c.Cursor = Cursors.Hand;
+                                c.Click += (s, e) => ApplyUpdateAndRestart();
+                                break;
+                            }
+                        }
+                    }
+                    break;
+                }
             }
         }
         catch { }
@@ -164,49 +217,22 @@ class GM : Form
         return false;
     }
 
-    static void DownloadUpdate()
-    {
-        try
-        {
-            string tempFile = Path.Combine(Path.GetTempPath(), "gm_update.exe");
-            string appDir = AppDomain.CurrentDomain.BaseDirectory;
-            string currentExe = Application.ExecutablePath;
-            string tempExe = Path.Combine(appDir, "gm_temp.exe");
-
-            MessageBox.Show("Downloading update...", "GM Update", MessageBoxButtons.OK, MessageBoxIcon.Information);
-
-            using (var wc = new WebClient())
-            {
-                wc.DownloadFile(downloadUrl, tempFile);
-            }
-
-            FileInfo fi = new FileInfo(tempFile);
-            if (!fi.Exists || fi.Length < 102400)
-            {
-                MessageBox.Show("Download failed or file is too small.", "GM Update", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
-            }
-
-            if (File.Exists(tempExe)) { try { File.Delete(tempExe); } catch { } }
-            File.Move(currentExe, tempExe);
-            File.Copy(tempFile, currentExe, true);
-
-            MessageBox.Show("Update downloaded! Restart GM to apply.", "GM Update", MessageBoxButtons.OK, MessageBoxIcon.Information);
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show("Update failed: " + ex.Message, "GM Update", MessageBoxButtons.OK, MessageBoxIcon.Error);
-        }
-    }
-
     static void ApplyUpdateAndRestart()
     {
         try
         {
-            Process.Start(Application.ExecutablePath);
-            Application.Exit();
+            if (pendingUpdateFile.Length > 0 && File.Exists(pendingUpdateFile))
+            {
+                string currentExe = Application.ExecutablePath;
+                string backup = currentExe + ".old";
+                if (File.Exists(backup)) { try { File.Delete(backup); } catch { } }
+                File.Move(currentExe, backup);
+                File.Copy(pendingUpdateFile, currentExe, true);
+                Process.Start(currentExe);
+                Application.Exit();
+            }
         }
-        catch { }
+        catch { MessageBox.Show("Update failed. Please download manually from GitHub.", "GM Update", MessageBoxButtons.OK, MessageBoxIcon.Error); }
     }
 
     static void AddToRecent(string name)
@@ -6259,22 +6285,9 @@ class GM : Form
             var btnAbout = MakeBtn("About", 385, y, Color.FromArgb(60, 40, 80), (s, e) => ShowAbout());
             tips.SetToolTip(btnAbout, "About GM Command Center");
 
-            System.Threading.Thread updateThread = new System.Threading.Thread(() => CheckForUpdates());
+            System.Threading.Thread updateThread = new System.Threading.Thread(() => AutoUpdateCheck());
             updateThread.IsBackground = true;
             updateThread.Start();
-
-            var updateCheckTimer = new System.Windows.Forms.Timer();
-            updateCheckTimer.Interval = 3000;
-            updateCheckTimer.Tick += (s2, e2) =>
-            {
-                if (updateAvailable)
-                {
-                    updateCheckTimer.Stop();
-                    updateCheckTimer.Dispose();
-                    MessageBox.Show("GM " + remoteVersion + " is available!\n\nClick About to download the update.", "Update Available", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
-            };
-            updateCheckTimer.Start();
             y += gap;
 
             var btnAfk = MakeBtn("AFK Launch", 10, y, Color.FromArgb(0, 80, 160), (s, e) => LaunchApps());
@@ -6844,7 +6857,7 @@ class GM : Form
             f.StartPosition = FormStartPosition.CenterScreen;
             try { f.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
 
-            var lblTitle = new Label { Text = "GM Command Center v2.9", Font = new Font("Segoe UI", 16, FontStyle.Bold), ForeColor = Color.FromArgb(0, 170, 255), AutoSize = true, Location = new Point(90, 10) };
+            var lblTitle = new Label { Text = "GM Command Center v" + currentVersion, Font = new Font("Segoe UI", 16, FontStyle.Bold), ForeColor = Color.FromArgb(0, 170, 255), AutoSize = true, Location = new Point(70, 10) };
             var lblDev = new Label { Text = "Developed by nu1lbyte", Font = new Font("Segoe UI", 10), ForeColor = Color.FromArgb(80, 80, 100), AutoSize = true, Location = new Point(140, 40) };
             var lblFeatures = new Label
             {
@@ -6872,7 +6885,17 @@ class GM : Form
                     "Currency Converter, Character Map, Text Diff\n" +
                     "JSON->XML, File Shredder, Palette Gen\n" +
                     "Multi Hash, DNS Lookup, Barcode Gen\n" +
-                    "Color Harmony\n\n" +
+                    "Color Harmony, Uninstall Manager, Services\n" +
+                    "Env Vars, Hosts Editor, Power Plans\n" +
+                    "Scheduled Tasks, DNS Changer, Traceroute\n" +
+                    "IP Config, Firewall, Bandwidth Test\n" +
+                    "Window Inspector, Ruler, Process Watch\n" +
+                    "Quick Launcher, Always On Top\n" +
+                    "Disk Health, GPU Monitor, Battery\n" +
+                    "System Info Pro, Disk Benchmark\n" +
+                    "Screenshot OCR, File Locksmith\n" +
+                    "Clipboard Monitor, Sleep Timer\n" +
+                    "Crapware Detector, Auto-Update\n\n" +
                     "Right-click any button to pin favourites!",
                 Font = new Font("Segoe UI", 8),
                 ForeColor = Color.FromArgb(120, 120, 140),
@@ -6883,37 +6906,66 @@ class GM : Form
             Font btnFont = new Font("Segoe UI", 9, FontStyle.Bold);
             var btnUpdate = new Button
             {
-                Text = updateAvailable ? "Update available: v" + remoteVersion + " - Click to download" : "Up to date (v" + currentVersion + ")",
+                Text = "Checking for updates...",
                 Location = new Point(10, 360),
                 Size = new Size(445, 36),
                 FlatStyle = FlatStyle.Flat,
-                BackColor = updateAvailable ? Color.FromArgb(0, 140, 80) : Color.FromArgb(40, 40, 55),
+                BackColor = Color.FromArgb(40, 40, 55),
                 ForeColor = Color.White,
                 Font = btnFont,
                 Cursor = Cursors.Hand
             };
             btnUpdate.FlatAppearance.BorderSize = 0;
 
-            if (updateAvailable)
+            Action checkUpdate = () =>
             {
-                btnUpdate.Click += (s, e) =>
+                try
                 {
-                    if (MessageBox.Show("Download GM " + remoteVersion + "?", "GM Update", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                    using (var wc = new WebClient())
                     {
-                        DownloadUpdate();
+                        wc.Headers.Add("User-Agent", "GM-UpdateChecker");
+                        string remote = wc.DownloadString(updateUrl).Trim();
+                        if (IsNewerVersion(remote, currentVersion))
+                        {
+                            updateAvailable = true;
+                            remoteVersion = remote;
+                            btnUpdate.Text = "UPDATE AVAILABLE: v" + remote + " - Click to download";
+                            btnUpdate.BackColor = Color.FromArgb(0, 140, 80);
+                        }
+                        else
+                        {
+                            btnUpdate.Text = "Up to date (v" + currentVersion + ")";
+                            btnUpdate.BackColor = Color.FromArgb(40, 40, 55);
+                        }
                     }
-                };
-            }
-            else
+                }
+                catch
+                {
+                    btnUpdate.Text = "Could not check for updates (v" + currentVersion + ")";
+                    btnUpdate.BackColor = Color.FromArgb(40, 40, 55);
+                }
+            };
+
+            btnUpdate.Click += (s, e) =>
             {
-                btnUpdate.Enabled = false;
-            }
+                if (updateAvailable)
+                {
+                    ApplyUpdateAndRestart();
+                }
+            };
+
+            System.Threading.Thread updateThread = new System.Threading.Thread(() =>
+            {
+                try { f.Invoke((Action)(() => checkUpdate())); } catch { }
+            });
+            updateThread.IsBackground = true;
+            updateThread.Start();
 
             var btnClose = new Button
             {
                 Text = "Close",
-                Location = new Point(350, 405),
-                Size = new Size(105, 30),
+                Location = new Point(10, 405),
+                Size = new Size(445, 30),
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.FromArgb(80, 80, 100),
                 ForeColor = Color.White,
@@ -6921,24 +6973,10 @@ class GM : Form
                 Cursor = Cursors.Hand
             };
             btnClose.FlatAppearance.BorderSize = 0;
-            btnClose.Click += (s, e) => f.Close();
+            btnClose.Click += (s2, e2) => f.Close();
 
-            var lblCopyright = new Label
-            {
-                Text = "Developed by nu1lbyte - " + DateTime.Now.Year,
-                Font = new Font("Segoe UI", 8),
-                ForeColor = Color.FromArgb(60, 60, 80),
-                AutoSize = true,
-                Location = new Point(140, 410)
-            };
-
-            f.Controls.AddRange(new Control[] { lblTitle, lblDev, lblFeatures, btnUpdate, btnClose, lblCopyright });
-            f.ShowDialog();
-            btnFont.Dispose();
-            lblTitle.Font.Dispose();
-            lblDev.Font.Dispose();
-            lblFeatures.Font.Dispose();
-            lblCopyright.Font.Dispose();
+            f.Controls.AddRange(new Control[] { lblTitle, lblDev, lblFeatures, btnUpdate, btnClose });
+            f.ShowDialog(this);
         }
 
         void ShowStats()
