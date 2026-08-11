@@ -133,38 +133,12 @@ class GM : Form
         {
             using (var wc = new WebClient())
             {
+                wc.Headers.Add("User-Agent", "GM-UpdateChecker");
                 remoteVersion = wc.DownloadString(updateUrl).Trim();
             }
             if (IsNewerVersion(remoteVersion, currentVersion))
             {
                 updateAvailable = true;
-                try
-                {
-                    if (Application.OpenForms.Count > 0)
-                    {
-                        Form mainForm = null;
-                        foreach (Form f in Application.OpenForms)
-                        {
-                            if (f is Hub) { mainForm = f; break; }
-                        }
-                        if (mainForm != null && mainForm.InvokeRequired)
-                        {
-                            mainForm.Invoke((Action)(() =>
-                            {
-                                try { MessageBox.Show("Version " + remoteVersion + " is available!\n\nOpen About dialog to update.", "GM Update Available", MessageBoxButtons.OK, MessageBoxIcon.Information); } catch { }
-                            }));
-                        }
-                        else
-                        {
-                            try { MessageBox.Show("Version " + remoteVersion + " is available!\n\nOpen About dialog to update.", "GM Update Available", MessageBoxButtons.OK, MessageBoxIcon.Information); } catch { }
-                        }
-                    }
-                    else
-                    {
-                        try { MessageBox.Show("Version " + remoteVersion + " is available!\n\nOpen About dialog to update.", "GM Update Available", MessageBoxButtons.OK, MessageBoxIcon.Information); } catch { }
-                    }
-                }
-                catch { }
             }
         }
         catch { }
@@ -6288,6 +6262,19 @@ class GM : Form
             System.Threading.Thread updateThread = new System.Threading.Thread(() => CheckForUpdates());
             updateThread.IsBackground = true;
             updateThread.Start();
+
+            var updateCheckTimer = new System.Windows.Forms.Timer();
+            updateCheckTimer.Interval = 3000;
+            updateCheckTimer.Tick += (s2, e2) =>
+            {
+                if (updateAvailable)
+                {
+                    updateCheckTimer.Stop();
+                    updateCheckTimer.Dispose();
+                    MessageBox.Show("GM " + remoteVersion + " is available!\n\nClick About to download the update.", "Update Available", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            };
+            updateCheckTimer.Start();
             y += gap;
 
             var btnAfk = MakeBtn("AFK Launch", 10, y, Color.FromArgb(0, 80, 160), (s, e) => LaunchApps());
