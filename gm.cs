@@ -45,7 +45,7 @@ class GM : Form
     static Dictionary<string, int> toolUsage = new Dictionary<string, int>();
     static string statsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "gm_stats.txt");
     static DateTime sessionStart = DateTime.Now;
-    static string currentVersion = "2.9.3";
+    static string currentVersion = "2.9.4";
     static string updateUrl = "https://raw.githubusercontent.com/NuIlbyte/GM/main/version.txt";
     static volatile string pendingUpdateFile = null;
     static volatile bool updateAvailable = false;
