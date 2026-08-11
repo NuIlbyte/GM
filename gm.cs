@@ -30,7 +30,7 @@ class GM : Form
     const int SW_RESTORE = 9;
     const uint WM_COMMAND = 0x0111;
     static List<Form> overlays = new List<Form>();
-    static bool focusActive = false;
+    static volatile bool focusActive = false;
     static string hostsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), @"drivers\etc\hosts");
     static string hostsBackup = Path.Combine(Path.GetTempPath(), "gm_hosts_backup.txt");
     static string[] blockSites = { "youtube.com", "tiktok.com", "twitter.com", "x.com", "instagram.com", "reddit.com", "facebook.com" };
@@ -47,19 +47,28 @@ class GM : Form
     static DateTime sessionStart = DateTime.Now;
     static string currentVersion = "2.9.3";
     static string updateUrl = "https://raw.githubusercontent.com/NuIlbyte/GM/main/version.txt";
-    static string pendingUpdateFile = null;
-    static bool updateAvailable = false;
-    static string remoteVersion = "";
+    static volatile string pendingUpdateFile = null;
+    static volatile bool updateAvailable = false;
+    static volatile string remoteVersion = "";
 
     static void Main()
     {
-        Application.EnableVisualStyles();
-        Application.SetCompatibleTextRenderingDefault(false);
-        Application.ThreadException += (s, e) => MessageBox.Show("Error: " + e.Exception.Message, "GM", MessageBoxButtons.OK, MessageBoxIcon.Error);
-        AppDomain.CurrentDomain.UnhandledException += (s, e) => { var ex = e.ExceptionObject as Exception; if (ex != null) MessageBox.Show("Error: " + ex.Message, "GM", MessageBoxButtons.OK, MessageBoxIcon.Error); };
-        LoadStats();
-        var hub = new Hub();
-        Application.Run(hub);
+        bool createdNew;
+        using (System.Threading.Mutex mutex = new System.Threading.Mutex(true, "GM_CommandCenter_SingleInstance", out createdNew))
+        {
+            if (!createdNew)
+            {
+                MessageBox.Show("GM is already running.", "GM", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+            Application.ThreadException += (s, e) => MessageBox.Show("Error: " + e.Exception.Message, "GM", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            AppDomain.CurrentDomain.UnhandledException += (s, e) => { var ex = e.ExceptionObject as Exception; if (ex != null) MessageBox.Show("Error: " + ex.Message, "GM", MessageBoxButtons.OK, MessageBoxIcon.Error); };
+            LoadStats();
+            var hub = new Hub();
+            Application.Run(hub);
+        }
     }
 
     static void LoadFavourites()
@@ -132,7 +141,7 @@ class GM : Form
         try
         {
             System.Threading.Thread.Sleep(5000);
-            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+            ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
             string remote = "";
             using (WebClient wc = new WebClient())
             {
@@ -153,6 +162,32 @@ class GM : Form
                 FileInfo fi = new FileInfo(tempFile);
                 if (fi.Exists && fi.Length > 102400)
                 {
+                    string expectedHash = "";
+                    try
+                    {
+                        using (WebClient wc = new WebClient())
+                        {
+                            wc.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+                            expectedHash = wc.DownloadString("https://raw.githubusercontent.com/NuIlbyte/GM/main/sha256_" + remote + ".txt").Trim().ToUpperInvariant();
+                        }
+                    }
+                    catch { }
+                    if (expectedHash.Length > 0)
+                    {
+                        using (SHA256 sha = SHA256.Create())
+                        using (FileStream fs = File.OpenRead(tempFile))
+                        {
+                            byte[] hashBytes = sha.ComputeHash(fs);
+                            StringBuilder sb = new StringBuilder();
+                            foreach (byte b in hashBytes) sb.Append(b.ToString("X2"));
+                            string actualHash = sb.ToString();
+                            if (actualHash != expectedHash)
+                            {
+                                try { File.Delete(tempFile); } catch { }
+                                return;
+                            }
+                        }
+                    }
                     pendingUpdateFile = tempFile;
                     ShowUpdateNotification();
                 }
@@ -164,6 +199,8 @@ class GM : Form
         }
         catch { }
     }
+
+    static volatile bool updateNotificationShown = false;
 
     static void ShowUpdateNotification()
     {
@@ -178,7 +215,11 @@ class GM : Form
             statusRef.Text = "Update v" + remoteVersion + " ready! Click here to restart.";
             statusRef.ForeColor = Color.FromArgb(0, 200, 100);
             statusRef.Cursor = Cursors.Hand;
-            statusRef.Click += (s, e) => ApplyUpdateAndRestart();
+            if (!updateNotificationShown)
+            {
+                updateNotificationShown = true;
+                statusRef.Click += (s, e) => ApplyUpdateAndRestart();
+            }
         }
         catch { }
     }
@@ -207,16 +248,24 @@ class GM : Form
     {
         try
         {
-            if (pendingUpdateFile.Length > 0 && File.Exists(pendingUpdateFile))
+            if (pendingUpdateFile == null || pendingUpdateFile.Length == 0 || !File.Exists(pendingUpdateFile))
             {
-                string currentExe = Application.ExecutablePath;
-                string backup = currentExe + ".old";
-                if (File.Exists(backup)) { try { File.Delete(backup); } catch { } }
-                File.Move(currentExe, backup);
-                File.Copy(pendingUpdateFile, currentExe, true);
-                Process.Start(currentExe);
-                Application.Exit();
+                MessageBox.Show("No update file found.", "GM Update", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
             }
+            string currentExe = Application.ExecutablePath;
+            string backup = currentExe + ".old";
+            string batFile = Path.Combine(Path.GetTempPath(), "gm_update_apply.bat");
+            if (File.Exists(backup)) { try { File.Delete(backup); } catch { } }
+            string batContent = "@echo off\r\n" +
+                "timeout /t 2 /nobreak > nul\r\n" +
+                "move /y \"" + currentExe + "\" \"" + backup + "\"\r\n" +
+                "copy /y \"" + pendingUpdateFile + "\" \"" + currentExe + "\"\r\n" +
+                "start \"\" \"" + currentExe + "\"\r\n" +
+                "del \"%~f0\"\r\n";
+            File.WriteAllText(batFile, batContent);
+            Process.Start(new ProcessStartInfo(batFile) { CreateNoWindow = true, UseShellExecute = false });
+            Application.Exit();
         }
         catch { MessageBox.Show("Update failed. Please download manually from GitHub.", "GM Update", MessageBoxButtons.OK, MessageBoxIcon.Error); }
     }
@@ -231,7 +280,6 @@ class GM : Form
 
     static void RefreshFavourites(FlowLayoutPanel favPanel)
     {
-        foreach (Control c in favPanel.Controls) { try { if (c.Font != null) c.Font.Dispose(); } catch { } }
         favPanel.Controls.Clear();
         foreach (string name in favourites)
         {
@@ -255,7 +303,6 @@ class GM : Form
 
     static void RefreshRecent(FlowLayoutPanel recentPanel, Font recentFont)
     {
-        foreach (Control c in recentPanel.Controls) { try { if (c.Font != null) c.Font.Dispose(); } catch { } }
         recentPanel.Controls.Clear();
         foreach (string name in recentTools)
         {
@@ -279,8 +326,17 @@ class GM : Form
 
     static void SetStatus(string text)
     {
-        if (statusRef != null && !statusRef.IsDisposed)
+        try
+        {
+            if (statusRef == null || statusRef.IsDisposed) return;
+            if (statusRef.InvokeRequired)
+            {
+                statusRef.BeginInvoke((Action)(() => SetStatus(text)));
+                return;
+            }
             statusRef.Text = DateTime.Now.ToString("HH:mm:ss") + " - " + text;
+        }
+        catch { }
     }
 
     static void Lock() { LockWorkStation(); }
@@ -310,7 +366,7 @@ class GM : Form
             var dirs = Directory.GetDirectories(temp, "*", SearchOption.AllDirectories).OrderByDescending(d => d.Length).ToArray();
             foreach (string d in dirs)
             {
-                try { Directory.Delete(d, false); dirCount++; } catch { }
+                try { Directory.Delete(d, true); dirCount++; } catch { }
             }
         }
         catch { }
@@ -398,9 +454,11 @@ class GM : Form
     {
         try
         {
-            var p = Process.Start(new ProcessStartInfo("ipconfig", "/flushdns")
-            { CreateNoWindow = true, UseShellExecute = false, RedirectStandardOutput = true });
-            if (p != null) { p.StandardOutput.ReadToEnd(); p.WaitForExit(); p.Dispose(); }
+            using (var p = Process.Start(new ProcessStartInfo("ipconfig", "/flushdns")
+            { CreateNoWindow = true, UseShellExecute = false, RedirectStandardOutput = true }))
+            {
+                if (p != null) { p.StandardOutput.ReadToEnd(); p.WaitForExit(); }
+            }
         }
         catch { }
     }
@@ -1311,7 +1369,9 @@ class GM : Form
             {
                 try
                 {
-                    var psi2 = new ProcessStartInfo("netsh", "wlan show profile name=\"" + name + "\" key=clear");
+                    string safeName = name.Replace("\"", "").Replace("&", "").Replace("|", "").Replace(";", "").Replace("(", "").Replace(")", "").Trim();
+                    if (safeName.Length == 0) { result += name + " : (skipped - invalid name)\n"; continue; }
+                    var psi2 = new ProcessStartInfo("netsh", "wlan show profile name=\"" + safeName + "\" key=clear");
                     psi2.RedirectStandardOutput = true;
                     psi2.UseShellExecute = false;
                     psi2.CreateNoWindow = true;
@@ -1752,7 +1812,9 @@ class GM : Form
                     {
                         case "Low": pc = ProcessPriorityClass.BelowNormal; break;
                         case "High": pc = ProcessPriorityClass.AboveNormal; break;
-                        case "Realtime": pc = ProcessPriorityClass.RealTime; break;
+                        case "Realtime":
+                            if (MessageBox.Show("RealTime priority can make your system unresponsive.\nAre you sure?", "GM - Warning", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
+                            pc = ProcessPriorityClass.RealTime; break;
                         default: pc = ProcessPriorityClass.Normal; break;
                     }
                     proc.PriorityClass = pc;
@@ -5553,8 +5615,8 @@ class GM : Form
                 int vol = trkVol.Value;
                 string voiceLine = cmbVoice.SelectedItem.ToString();
                 string voiceName = voiceLine.Split(new char[] { '|' })[0].Trim();
-                string safeText = text.Replace("'", "''").Replace("$", "`$").Replace("(", "`(").Replace(")", "`)");
-                string safeVoice = voiceName.Replace("'", "''");
+                string safeText = text.Replace("`", "``").Replace("'", "''").Replace("\"", "`\"").Replace("$", "`$").Replace("(", "`(").Replace(")", "`)").Replace(";", "`;").Replace("|", "`|").Replace("&", "`&").Replace("<", "`<").Replace(">", "`>`");
+                string safeVoice = voiceName.Replace("'", "''").Replace("\"", "`\"");
                 string script = "$s = New-Object -ComObject SAPI.SPVoice; $s.Rate = " + rate + "; $s.Volume = " + vol + "; $s.SelectVoice('" + safeVoice + "'); $s.Speak('" + safeText + "')";
                 var psi = new ProcessStartInfo("powershell.exe", "-Command \"" + script + "\"");
                 psi.CreateNoWindow = true;
@@ -6907,7 +6969,7 @@ class GM : Form
             {
                 try
                 {
-                    ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+                    ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
                     using (var wc = new WebClient())
                     {
                         wc.Headers.Add("User-Agent", "GM-UpdateChecker");
