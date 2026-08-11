@@ -5,6 +5,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
@@ -44,6 +45,11 @@ class GM : Form
     static Dictionary<string, int> toolUsage = new Dictionary<string, int>();
     static string statsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "gm_stats.txt");
     static DateTime sessionStart = DateTime.Now;
+    static string currentVersion = "2.9";
+    static string updateUrl = "https://raw.githubusercontent.com/NuIlbyte/GM/main/version.txt";
+    static string downloadUrl = "https://github.com/NuIlbyte/GM/releases/latest/download/gm.exe";
+    static bool updateAvailable = false;
+    static string remoteVersion = "";
 
     static void Main()
     {
@@ -119,6 +125,114 @@ class GM : Form
         else
             toolUsage[toolName] = 1;
         SaveStats();
+    }
+
+    static void CheckForUpdates()
+    {
+        try
+        {
+            using (var wc = new WebClient())
+            {
+                remoteVersion = wc.DownloadString(updateUrl).Trim();
+            }
+            if (IsNewerVersion(remoteVersion, currentVersion))
+            {
+                updateAvailable = true;
+                try
+                {
+                    if (Application.OpenForms.Count > 0)
+                    {
+                        Form mainForm = null;
+                        foreach (Form f in Application.OpenForms)
+                        {
+                            if (f is Hub) { mainForm = f; break; }
+                        }
+                        if (mainForm != null && mainForm.InvokeRequired)
+                        {
+                            mainForm.Invoke((Action)(() =>
+                            {
+                                try { MessageBox.Show("Version " + remoteVersion + " is available!\n\nOpen About dialog to update.", "GM Update Available", MessageBoxButtons.OK, MessageBoxIcon.Information); } catch { }
+                            }));
+                        }
+                        else
+                        {
+                            try { MessageBox.Show("Version " + remoteVersion + " is available!\n\nOpen About dialog to update.", "GM Update Available", MessageBoxButtons.OK, MessageBoxIcon.Information); } catch { }
+                        }
+                    }
+                    else
+                    {
+                        try { MessageBox.Show("Version " + remoteVersion + " is available!\n\nOpen About dialog to update.", "GM Update Available", MessageBoxButtons.OK, MessageBoxIcon.Information); } catch { }
+                    }
+                }
+                catch { }
+            }
+        }
+        catch { }
+    }
+
+    static bool IsNewerVersion(string remote, string local)
+    {
+        try
+        {
+            string[] rParts = remote.Split('.');
+            string[] lParts = local.Split('.');
+            int maxLen = Math.Max(rParts.Length, lParts.Length);
+            for (int i = 0; i < maxLen; i++)
+            {
+                int rVal = 0, lVal = 0;
+                if (i < rParts.Length) int.TryParse(rParts[i], out rVal);
+                if (i < lParts.Length) int.TryParse(lParts[i], out lVal);
+                if (rVal > lVal) return true;
+                if (rVal < lVal) return false;
+            }
+        }
+        catch { }
+        return false;
+    }
+
+    static void DownloadUpdate()
+    {
+        try
+        {
+            string tempFile = Path.Combine(Path.GetTempPath(), "gm_update.exe");
+            string appDir = AppDomain.CurrentDomain.BaseDirectory;
+            string currentExe = Application.ExecutablePath;
+            string tempExe = Path.Combine(appDir, "gm_temp.exe");
+
+            MessageBox.Show("Downloading update...", "GM Update", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+            using (var wc = new WebClient())
+            {
+                wc.DownloadFile(downloadUrl, tempFile);
+            }
+
+            FileInfo fi = new FileInfo(tempFile);
+            if (!fi.Exists || fi.Length < 102400)
+            {
+                MessageBox.Show("Download failed or file is too small.", "GM Update", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            if (File.Exists(tempExe)) { try { File.Delete(tempExe); } catch { } }
+            File.Move(currentExe, tempExe);
+            File.Copy(tempFile, currentExe, true);
+
+            MessageBox.Show("Update downloaded! Restart GM to apply.", "GM Update", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show("Update failed: " + ex.Message, "GM Update", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    static void ApplyUpdateAndRestart()
+    {
+        try
+        {
+            Process.Start(Application.ExecutablePath);
+            Application.Exit();
+        }
+        catch { }
     }
 
     static void AddToRecent(string name)
@@ -6170,6 +6284,10 @@ class GM : Form
             tips.SetToolTip(btnLayout, "Snap Chrome + Discord side by side (Ctrl+Shift+L)");
             var btnAbout = MakeBtn("About", 385, y, Color.FromArgb(60, 40, 80), (s, e) => ShowAbout());
             tips.SetToolTip(btnAbout, "About GM Command Center");
+
+            System.Threading.Thread updateThread = new System.Threading.Thread(() => CheckForUpdates());
+            updateThread.IsBackground = true;
+            updateThread.Start();
             y += gap;
 
             var btnAfk = MakeBtn("AFK Launch", 10, y, Color.FromArgb(0, 80, 160), (s, e) => LaunchApps());
@@ -6730,41 +6848,110 @@ class GM : Form
 
         void ShowAbout()
         {
-            string msg = "GM Command Center v2.9\n\n";
-            msg += "Developed by nu1lbyte\n\n";
-            msg += "Features (110 tools):\n";
-            msg += "Lock, Clean, Dark Mode, Min All, Mute Mic\n";
-            msg += "Focus Mode, Clipboard, Quick CMD, Screenshot\n";
-            msg += "Ping Overlay, Layout, AFK Launch, Volume\n";
-            msg += "Network, System Info, Empty Bin, Processes\n";
-            msg += "CPU Monitor, WiFi Passwords, Quick Notes\n";
-            msg += "File Hash, Bulk Renamer, Base64, Password Gen\n";
-            msg += "Process Priority, Startup Mgr, Quick Clean\n";
-            msg += "Public IP, File Info, Screen Timer, Text Tools\n";
-            msg += "Color Palette, Calculator, URL Encoder\n";
-            msg += "JSON Format, Regex Test, Text Hash\n";
-            msg += "Clipboard Mgr, Drive Info, Quick Paint\n";
-            msg += "Pattern Code, Net Speed, Hex Viewer\n";
-            msg += "Code Format, Lorem Ipsum, Timestamp\n";
-            msg += "Markdown, CSS Gradient, Regex Cheat\n";
-            msg += "API Tester, Snippets, Quick Terminal\n";
-            msg += "Color Picker, Image Resize, Unit Converter\n";
-            msg += "Base Converter, Text Replacer, File Encrypt\n";
-            msg += "Disk Analyzer, CSV Viewer, JSON->CSV\n";
-            msg += "Word Counter, Text to Speech, Password Check\n";
-            msg += "Port Scanner\n";
-            msg += "IP Geolocate, Weather, Currency Converter\n";
-            msg += "Character Map, Text Diff, JSON->XML\n";
-            msg += "Quick Notes, File Shredder, Palette Gen\n";
-            msg += "Multi Hash, DNS Lookup, Barcode Gen\n";
-            msg += "Color Harmony\n\n";
-            msg += "Embedded Tools (Ctrl+1 to 5):\n";
-            msg += "Ctrl+1=Timer, Ctrl+2=ColorPicker\n";
-            msg += "Ctrl+3=HistoryClean, Ctrl+4=ShutdownTimer\n";
-            msg += "Ctrl+5=MatrixRain\n\n";
-            msg += "Right-click any button to pin favourites!\n\n";
-            msg += "Developed by nu1lbyte - " + DateTime.Now.Year;
-            MessageBox.Show(msg, "About GM", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            var f = new Form();
+            f.Text = "About GM";
+            f.Size = new Size(480, 460);
+            f.FormBorderStyle = FormBorderStyle.FixedSingle;
+            f.MaximizeBox = false;
+            f.BackColor = Color.FromArgb(15, 15, 25);
+            f.StartPosition = FormStartPosition.CenterScreen;
+            try { f.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
+
+            var lblTitle = new Label { Text = "GM Command Center v2.9", Font = new Font("Segoe UI", 16, FontStyle.Bold), ForeColor = Color.FromArgb(0, 170, 255), AutoSize = true, Location = new Point(90, 10) };
+            var lblDev = new Label { Text = "Developed by nu1lbyte", Font = new Font("Segoe UI", 10), ForeColor = Color.FromArgb(80, 80, 100), AutoSize = true, Location = new Point(140, 40) };
+            var lblFeatures = new Label
+            {
+                Text = "Features (110+ tools):\n" +
+                    "Lock, Clean, Dark Mode, Min All, Mute Mic\n" +
+                    "Focus Mode, Clipboard, Quick CMD, Screenshot\n" +
+                    "Ping Overlay, Layout, AFK Launch, Volume\n" +
+                    "Network, System Info, Empty Bin, Processes\n" +
+                    "CPU Monitor, WiFi Passwords, Quick Notes\n" +
+                    "File Hash, Bulk Renamer, Base64, Password Gen\n" +
+                    "Process Priority, Startup Mgr, Quick Clean\n" +
+                    "Public IP, File Info, Screen Timer, Text Tools\n" +
+                    "Color Palette, Calculator, URL Encoder\n" +
+                    "JSON Format, Regex Test, Text Hash\n" +
+                    "Clipboard Mgr, Drive Info, Quick Paint\n" +
+                    "Pattern Code, Net Speed, Hex Viewer\n" +
+                    "Code Format, Lorem Ipsum, Timestamp\n" +
+                    "Markdown, CSS Gradient, Regex Cheat\n" +
+                    "API Tester, Snippets, Quick Terminal\n" +
+                    "Color Picker, Image Resize, Unit Converter\n" +
+                    "Base Converter, Text Replacer, File Encrypt\n" +
+                    "Disk Analyzer, CSV Viewer, JSON->CSV\n" +
+                    "Word Counter, Text to Speech, Password Check\n" +
+                    "Port Scanner, IP Geolocate, Weather\n" +
+                    "Currency Converter, Character Map, Text Diff\n" +
+                    "JSON->XML, File Shredder, Palette Gen\n" +
+                    "Multi Hash, DNS Lookup, Barcode Gen\n" +
+                    "Color Harmony\n\n" +
+                    "Right-click any button to pin favourites!",
+                Font = new Font("Segoe UI", 8),
+                ForeColor = Color.FromArgb(120, 120, 140),
+                AutoSize = true,
+                Location = new Point(15, 65)
+            };
+
+            Font btnFont = new Font("Segoe UI", 9, FontStyle.Bold);
+            var btnUpdate = new Button
+            {
+                Text = updateAvailable ? "Update available: v" + remoteVersion + " - Click to download" : "Up to date (v" + currentVersion + ")",
+                Location = new Point(10, 360),
+                Size = new Size(445, 36),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = updateAvailable ? Color.FromArgb(0, 140, 80) : Color.FromArgb(40, 40, 55),
+                ForeColor = Color.White,
+                Font = btnFont,
+                Cursor = Cursors.Hand
+            };
+            btnUpdate.FlatAppearance.BorderSize = 0;
+
+            if (updateAvailable)
+            {
+                btnUpdate.Click += (s, e) =>
+                {
+                    if (MessageBox.Show("Download GM " + remoteVersion + "?", "GM Update", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                    {
+                        DownloadUpdate();
+                    }
+                };
+            }
+            else
+            {
+                btnUpdate.Enabled = false;
+            }
+
+            var btnClose = new Button
+            {
+                Text = "Close",
+                Location = new Point(350, 405),
+                Size = new Size(105, 30),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(80, 80, 100),
+                ForeColor = Color.White,
+                Font = btnFont,
+                Cursor = Cursors.Hand
+            };
+            btnClose.FlatAppearance.BorderSize = 0;
+            btnClose.Click += (s, e) => f.Close();
+
+            var lblCopyright = new Label
+            {
+                Text = "Developed by nu1lbyte - " + DateTime.Now.Year,
+                Font = new Font("Segoe UI", 8),
+                ForeColor = Color.FromArgb(60, 60, 80),
+                AutoSize = true,
+                Location = new Point(140, 410)
+            };
+
+            f.Controls.AddRange(new Control[] { lblTitle, lblDev, lblFeatures, btnUpdate, btnClose, lblCopyright });
+            f.ShowDialog();
+            btnFont.Dispose();
+            lblTitle.Font.Dispose();
+            lblDev.Font.Dispose();
+            lblFeatures.Font.Dispose();
+            lblCopyright.Font.Dispose();
         }
 
         void ShowStats()
