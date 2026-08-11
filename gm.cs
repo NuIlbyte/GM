@@ -45,7 +45,7 @@ class GM : Form
     static Dictionary<string, int> toolUsage = new Dictionary<string, int>();
     static string statsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "gm_stats.txt");
     static DateTime sessionStart = DateTime.Now;
-    static string currentVersion = "2.9.4";
+    static string currentVersion = "2.9.5";
     static string updateUrl = "https://raw.githubusercontent.com/NuIlbyte/GM/main/version.txt";
     static volatile string pendingUpdateFile = null;
     static volatile bool updateAvailable = false;
@@ -6879,7 +6879,7 @@ class GM : Form
             f.StartPosition = FormStartPosition.CenterScreen;
             try { f.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
 
-            var lblTitle = new Label { Text = "GM Command Center v" + currentVersion, Font = new Font("Segoe UI", 16, FontStyle.Bold), ForeColor = Color.FromArgb(0, 170, 255), AutoSize = true, Location = new Point(70, 10) };
+            var lblTitle = new Label { Text = "GM Command Center v" + currentVersion, Font = new Font("Segoe UI", 16.2f, FontStyle.Bold), ForeColor = Color.FromArgb(0, 170, 255), AutoSize = true, Location = new Point(70, 10) };
             var lblDev = new Label { Text = "Developed by nu1lbyte", Font = new Font("Segoe UI", 10), ForeColor = Color.FromArgb(80, 80, 100), AutoSize = true, Location = new Point(140, 40) };
             var lblFeatures = new Label
             {
