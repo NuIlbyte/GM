@@ -45,7 +45,7 @@ class GM : Form
     static Dictionary<string, int> toolUsage = new Dictionary<string, int>();
     static string statsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "gm_stats.txt");
     static DateTime sessionStart = DateTime.Now;
-    static string currentVersion = "2.9.1";
+    static string currentVersion = "2.9.3";
     static string updateUrl = "https://raw.githubusercontent.com/NuIlbyte/GM/main/version.txt";
     static string pendingUpdateFile = null;
     static bool updateAvailable = false;
@@ -133,33 +133,27 @@ class GM : Form
         {
             System.Threading.Thread.Sleep(5000);
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-            File.WriteAllText(Path.Combine(Path.GetTempPath(), "gm_update_log.txt"), "Update check started at " + DateTime.Now + "\n");
             string remote = "";
             using (WebClient wc = new WebClient())
             {
                 wc.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
                 remote = wc.DownloadString(updateUrl).Trim();
             }
-            File.AppendAllText(Path.Combine(Path.GetTempPath(), "gm_update_log.txt"), "Remote: '" + remote + "' Local: '" + currentVersion + "'\n");
             if (IsNewerVersion(remote, currentVersion))
             {
-                File.AppendAllText(Path.Combine(Path.GetTempPath(), "gm_update_log.txt"), "Update available! Downloading...\n");
                 remoteVersion = remote;
                 updateAvailable = true;
                 string tempFile = Path.Combine(Path.GetTempPath(), "gm_update_" + remote + ".exe");
-                string directUrl = "https://github.com/NuIlbyte/GM/releases/download/v" + remote + "/gm.exe";
-                File.AppendAllText(Path.Combine(Path.GetTempPath(), "gm_update_log.txt"), "URL: " + directUrl + "\n");
                 using (WebClient wc = new WebClient())
                 {
                     wc.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+                    string directUrl = "https://github.com/NuIlbyte/GM/releases/download/v" + remote + "/gm.exe";
                     wc.DownloadFile(directUrl, tempFile);
                 }
                 FileInfo fi = new FileInfo(tempFile);
-                File.AppendAllText(Path.Combine(Path.GetTempPath(), "gm_update_log.txt"), "File exists: " + fi.Exists + " Size: " + (fi.Exists ? fi.Length.ToString() : "0") + "\n");
                 if (fi.Exists && fi.Length > 102400)
                 {
                     pendingUpdateFile = tempFile;
-                    File.AppendAllText(Path.Combine(Path.GetTempPath(), "gm_update_log.txt"), "Calling ShowUpdateNotification\n");
                     ShowUpdateNotification();
                 }
                 else
@@ -167,15 +161,8 @@ class GM : Form
                     try { File.Delete(tempFile); } catch { }
                 }
             }
-            else
-            {
-                File.AppendAllText(Path.Combine(Path.GetTempPath(), "gm_update_log.txt"), "No update available\n");
-            }
         }
-        catch (Exception ex)
-        {
-            try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "gm_update_log.txt"), "ERROR: " + ex.Message + "\n" + ex.StackTrace + "\n"); } catch { }
-        }
+        catch { }
     }
 
     static void ShowUpdateNotification()
