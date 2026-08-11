@@ -45,9 +45,9 @@ class GM : Form
     static Dictionary<string, int> toolUsage = new Dictionary<string, int>();
     static string statsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "gm_stats.txt");
     static DateTime sessionStart = DateTime.Now;
-    static string currentVersion = "2.9";
+    static string currentVersion = "2.9.1";
     static string updateUrl = "https://raw.githubusercontent.com/NuIlbyte/GM/main/version.txt";
-    static string downloadUrl = "https://github.com/NuIlbyte/GM/releases/latest/download/gm.exe";
+    static string pendingUpdateFile = null;
     static bool updateAvailable = false;
     static string remoteVersion = "";
 
@@ -127,16 +127,14 @@ class GM : Form
         SaveStats();
     }
 
-    static string pendingUpdateFile = "";
-
     static void AutoUpdateCheck()
     {
         try
         {
             string remote = "";
-            using (var wc = new WebClient())
+            using (WebClient wc = new WebClient())
             {
-                wc.Headers.Add("User-Agent", "Mozilla/5.0");
+                wc.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
                 remote = wc.DownloadString(updateUrl).Trim();
             }
             if (IsNewerVersion(remote, currentVersion))
@@ -144,25 +142,22 @@ class GM : Form
                 remoteVersion = remote;
                 updateAvailable = true;
                 string tempFile = Path.Combine(Path.GetTempPath(), "gm_update_" + remote + ".exe");
-                try
+                using (WebClient wc = new WebClient())
                 {
-                    using (var wc = new WebClient())
-                    {
-                        wc.Headers.Add("User-Agent", "Mozilla/5.0");
-                        wc.DownloadFile(downloadUrl, tempFile);
-                    }
-                    FileInfo fi = new FileInfo(tempFile);
-                    if (fi.Exists && fi.Length > 102400)
-                    {
-                        pendingUpdateFile = tempFile;
-                        ShowUpdateNotification();
-                    }
-                    else
-                    {
-                        try { File.Delete(tempFile); } catch { }
-                    }
+                    wc.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+                    string directUrl = "https://github.com/NuIlbyte/GM/releases/download/v" + remote + "/gm.exe";
+                    wc.DownloadFile(directUrl, tempFile);
                 }
-                catch { }
+                FileInfo fi = new FileInfo(tempFile);
+                if (fi.Exists && fi.Length > 102400)
+                {
+                    pendingUpdateFile = tempFile;
+                    ShowUpdateNotification();
+                }
+                else
+                {
+                    try { File.Delete(tempFile); } catch { }
+                }
             }
         }
         catch { }
