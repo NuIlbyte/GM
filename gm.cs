@@ -232,9 +232,13 @@ class GM : Form
             string batFile = Path.Combine(Path.GetTempPath(), "gm_update_apply.bat");
             if (File.Exists(backup)) { try { File.Delete(backup); } catch { } }
             string batContent = "@echo off\r\n" +
-                "timeout /t 2 /nobreak > nul\r\n" +
-                "move /y \"" + currentExe + "\" \"" + backup + "\"\r\n" +
-                "copy /y \"" + pendingUpdateFile + "\" \"" + currentExe + "\"\r\n" +
+                "timeout /t 5 /nobreak > nul\r\n" +
+                "for /l %%i in (1,1,10) do (\r\n" +
+                "  move /y \"" + currentExe + "\" \"" + backup + "\" >nul 2>&1 && goto :done\r\n" +
+                "  timeout /t 2 /nobreak > nul\r\n" +
+                ")\r\n" +
+                ":done\r\n" +
+                "copy /y \"" + pendingUpdateFile + "\" \"" + currentExe + "\" >nul 2>&1\r\n" +
                 "start \"\" \"" + currentExe + "\"\r\n" +
                 "del \"%~f0\"\r\n";
             File.WriteAllText(batFile, batContent);
