@@ -232,9 +232,11 @@ class GM : Form
             string batFile = Path.Combine(Path.GetTempPath(), "gm_update_apply.bat");
             if (File.Exists(backup)) { try { File.Delete(backup); } catch { } }
             string batContent = "@echo off\r\n" +
-                "timeout /t 5 /nobreak > nul\r\n" +
+                "taskkill /f /im gm.exe >nul 2>&1\r\n" +
+                "timeout /t 3 /nobreak > nul\r\n" +
                 "for /l %%i in (1,1,10) do (\r\n" +
                 "  move /y \"" + currentExe + "\" \"" + backup + "\" >nul 2>&1 && goto :done\r\n" +
+                "  taskkill /f /im gm.exe >nul 2>&1\r\n" +
                 "  timeout /t 2 /nobreak > nul\r\n" +
                 ")\r\n" +
                 ":done\r\n" +
@@ -243,7 +245,7 @@ class GM : Form
                 "del \"%~f0\"\r\n";
             File.WriteAllText(batFile, batContent);
             Process.Start(new ProcessStartInfo(batFile) { CreateNoWindow = true, UseShellExecute = false });
-            Application.Exit();
+            Environment.Exit(0);
         }
         catch { MessageBox.Show("Update failed. Please download manually from GitHub.", "GM Update", MessageBoxButtons.OK, MessageBoxIcon.Error); }
     }
