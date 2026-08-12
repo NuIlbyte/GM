@@ -47,7 +47,7 @@ class GM : Form
     static Dictionary<string, int> toolUsage = new Dictionary<string, int>();
     static string statsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "gm_stats.txt");
     static DateTime sessionStart = DateTime.Now;
-    static string currentVersion = "2.9.7";
+    static string currentVersion = "2.9.8";
     static string updateUrl = "https://raw.githubusercontent.com/NuIlbyte/GM/main/version.txt";
     static volatile string pendingUpdateFile = null;
     static volatile bool updateAvailable = false;
@@ -6655,6 +6655,9 @@ class GM : Form
             tips.SetToolTip(btnCrapware, "Detect and remove bloatware");
             var btnStats = MakeBtn("Stats", 385, y, Color.FromArgb(40, 80, 60), (s, e) => ShowStats());
             tips.SetToolTip(btnStats, "View tool usage statistics");
+            y += gap;
+            var btnJacksUniverse = MakeBtn("JacksUniverse", 10, y, Color.FromArgb(200, 50, 50), (s, e) => OpenJacksUniverse());
+            tips.SetToolTip(btnJacksUniverse, "JackSucksAtLife tribute hub (Ctrl+Shift+J)");
             y += gap + 10;
 
             statusLabel = new Label { Text = "Ready", Font = statusFont, ForeColor = Color.FromArgb(60, 60, 80), AutoSize = true, Location = new Point(20, y + 5) };
@@ -6730,10 +6733,11 @@ class GM : Form
                 if (e.Control && e.Alt && e.KeyCode == Keys.F) OpenFileShredder();
                 if (e.Control && e.Shift && e.KeyCode == Keys.U) OpenUninstallManager();
                 if (e.Control && e.Shift && e.KeyCode == Keys.V) OpenEnvVars();
+                if (e.Control && e.Shift && e.KeyCode == Keys.J) OpenJacksUniverse();
                 if (e.KeyCode == Keys.F3) { txtSearch.Focus(); txtSearch.SelectAll(); }
             };
 
-            this.Controls.AddRange(new Control[] { title, sub, txtSearch, btnClearSearch, btnRefreshAll, lblRecent, recentPanel, lblFav, favPanel, btnLock, btnClean, btnDark, btnMinAll, btnMute, btnFocus, btnClip, btnCmd, btnSnap, btnRecord, btnLayout, btnAbout, btnStats, btnAfk, btnVol, btnNet, btnSysInfo, btnRecycle, btnProcesses, btnTimer, btnColorPick, btnHistClean, btnShutTimer, btnMatrix, btnFileHash, btnCpu, btnWifi, btnNotes, btnRenamer, btnBase64, btnPassGen, btnProcPri, btnStartup, btnQClean, btnPubIP, btnFileInfo, btnScreenTimer, btnTextTools, btnColorPal, btnCalc, btnUrlEnc, btnJson, btnRegex, btnTextHash, btnClipMgr, btnDriveInfo, btnPaint, btnQr, btnNetSpeed, btnHexView, btnCodeFmt, btnLorem, btnTimestamp, btnMarkdown, btnCssGrad, btnRegexCheat, btnApiTest, btnSnippet, btnTerminal, btnColorPicker2, btnImgResize, btnUnitCvt, btnBaseCvt, btnTextRepl, btnFileEnc, btnDisk, btnCsv, btnJsonCsv, btnTts, btnTts2, btnPwdStr, btnPortScan, btnIpGeo, btnWeather, btnCurrency, btnCharMap, btnDiff, btnJsonXml, btnNotes2, btnShred, btnPalette, btnMultiHash, btnWhois, btnBarcode, btnColorHarmony, btnUninstall, btnServices, btnEnvVars, btnHosts, btnPowerPlans, btnTasks, btnDnsChanger, btnNetConns, btnTraceroute, btnIpConfig, btnFirewall, btnBandwidth, btnWinSpy, btnRuler, btnProcWatch, btnQuickLaunch, btnAlwaysTop, btnDiskHealth, btnGpu, btnBattery, btnSysInfoPro, btnDiskSpeed, btnOcr, btnLockCheck, btnClipMon, btnSleepTimer, btnCrapware, statusLabel, footer });
+            this.Controls.AddRange(new Control[] { title, sub, txtSearch, btnClearSearch, btnRefreshAll, lblRecent, recentPanel, lblFav, favPanel, btnLock, btnClean, btnDark, btnMinAll, btnMute, btnFocus, btnClip, btnCmd, btnSnap, btnRecord, btnLayout, btnAbout, btnStats, btnAfk, btnVol, btnNet, btnSysInfo, btnRecycle, btnProcesses, btnTimer, btnColorPick, btnHistClean, btnShutTimer, btnMatrix, btnFileHash, btnCpu, btnWifi, btnNotes, btnRenamer, btnBase64, btnPassGen, btnProcPri, btnStartup, btnQClean, btnPubIP, btnFileInfo, btnScreenTimer, btnTextTools, btnColorPal, btnCalc, btnUrlEnc, btnJson, btnRegex, btnTextHash, btnClipMgr, btnDriveInfo, btnPaint, btnQr, btnNetSpeed, btnHexView, btnCodeFmt, btnLorem, btnTimestamp, btnMarkdown, btnCssGrad, btnRegexCheat, btnApiTest, btnSnippet, btnTerminal, btnColorPicker2, btnImgResize, btnUnitCvt, btnBaseCvt, btnTextRepl, btnFileEnc, btnDisk, btnCsv, btnJsonCsv, btnTts, btnTts2, btnPwdStr, btnPortScan, btnIpGeo, btnWeather, btnCurrency, btnCharMap, btnDiff, btnJsonXml, btnNotes2, btnShred, btnPalette, btnMultiHash, btnWhois, btnBarcode, btnColorHarmony, btnUninstall, btnServices, btnEnvVars, btnHosts, btnPowerPlans, btnTasks, btnDnsChanger, btnNetConns, btnTraceroute, btnIpConfig, btnFirewall, btnBandwidth, btnWinSpy, btnRuler, btnProcWatch, btnQuickLaunch, btnAlwaysTop, btnDiskHealth, btnGpu, btnBattery, btnSysInfoPro, btnDiskSpeed, btnOcr, btnLockCheck, btnClipMon, btnSleepTimer, btnCrapware, btnJacksUniverse, statusLabel, footer });
             statusRef = statusLabel;
             UpdateFocusBtn();
         }
@@ -10666,6 +10670,340 @@ class GM : Form
                 if (ownIcon && this.Icon != null) { this.Icon.Dispose(); this.Icon = null; }
             }
             base.Dispose(disposing);
+        }
+        void OpenJacksUniverse()
+        {
+            TrackUsage("JacksUniverse");
+            var f = new Form();
+            f.Text = "JacksUniverse - JackSucksAtLife Tribute";
+            f.Size = new Size(700, 550);
+            f.FormBorderStyle = FormBorderStyle.FixedSingle;
+            f.MaximizeBox = false;
+            f.BackColor = Color.FromArgb(15, 15, 25);
+            f.StartPosition = FormStartPosition.CenterScreen;
+            try { f.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
+
+            var tabs = new TabControl();
+            tabs.Dock = DockStyle.Fill;
+            tabs.Font = new Font("Segoe UI", 9);
+            tabs.BackColor = Color.FromArgb(20, 20, 35);
+
+            Font titleFont2 = new Font("Segoe UI", 14, FontStyle.Bold);
+            Font itemFont = new Font("Consolas", 9);
+            Font descFont = new Font("Segoe UI", 8);
+            Color accent = Color.FromArgb(200, 50, 50);
+            Color text = Color.FromArgb(200, 200, 220);
+
+            // === TAB 1: Play Buttons ===
+            var tabButtons = new TabPage("Play Buttons");
+            tabButtons.BackColor = Color.FromArgb(15, 15, 25);
+            var pnlButtons = new FlowLayoutPanel();
+            pnlButtons.Dock = DockStyle.Fill;
+            pnlButtons.AutoScroll = true;
+            pnlButtons.BackColor = Color.FromArgb(15, 15, 25);
+            pnlButtons.Padding = new Padding(10);
+
+            string[,] playButtons = {
+                { "Bronze (Custom)", "Jack's Dad", "1K subs", "A custom green wooden play button made by Jack's dad for hitting 1K subscribers." },
+                { "Silver", "SamSmellsOfApricots", "100K+", "Jack's first channel with comedy sketches from secondary school. Still has 140K+ subs." },
+                { "Gold #1", "JackSucksAtLife", "1M", "The original Gold Play Button for the main channel." },
+                { "Gold #2", "Don't Subscribe", "1M", "Won $100K from MrBeast for reaching 1M subs. Donated 30% to charity." },
+                { "Diamond", "JackSucksAtLife", "10M", "The Diamond Play Button - Jack's most prized possession." },
+                { "Custom Red Diamond", "JackSucksAtLife", "Custom", "Jack has multiple custom play buttons including the Red Diamond." },
+                { "100 Million (MrBeast)", "MrBeast", "100M", "Jack sent MrBeast's 100M button INTO SPACE. Literally." },
+                { "Longest Username Button", "JackSucksAtLife", "Custom", "16M views - the most viewed video. Features longest possible username." },
+                { "Custom Ruby", "JackSucksAtLife", "Custom", "The rarest custom button in Jack's collection." },
+                { "Wooden 1K", "Jack's Dad", "1K", "A little custom green wooden play button. Congratulations on 1K." }
+            };
+
+            for (int i = 0; i < playButtons.GetLength(0); i++)
+            {
+                var card = new Panel();
+                card.Size = new Size(640, 80);
+                card.BackColor = Color.FromArgb(25, 25, 40);
+                card.Margin = new Padding(5);
+
+                var lblName = new Label { Text = playButtons[i, 0], Font = new Font("Segoe UI", 10, FontStyle.Bold), ForeColor = accent, AutoSize = true, Location = new Point(10, 5) };
+                var lblChannel = new Label { Text = playButtons[i, 1] + " | " + playButtons[i, 2], Font = descFont, ForeColor = Color.FromArgb(120, 120, 140), AutoSize = true, Location = new Point(10, 28) };
+                var lblDesc = new Label { Text = playButtons[i, 3], Font = descFont, ForeColor = text, AutoSize = true, MaximumSize = new Size(620, 0), Location = new Point(10, 48) };
+
+                card.Controls.AddRange(new Control[] { lblName, lblChannel, lblDesc });
+                pnlButtons.Controls.Add(card);
+            }
+            tabButtons.Controls.Add(pnlButtons);
+
+            // === TAB 2: Meme Gallery ===
+            var tabMemes = new TabPage("Meme Gallery");
+            tabMemes.BackColor = Color.FromArgb(15, 15, 25);
+            var pnlMemes = new FlowLayoutPanel();
+            pnlMemes.Dock = DockStyle.Fill;
+            pnlMemes.AutoScroll = true;
+            pnlMemes.BackColor = Color.FromArgb(15, 15, 25);
+            pnlMemes.Padding = new Padding(10);
+
+            string[,] memes = {
+                { "I AM A RHOMBUS!", "Jack put his face on a rhombus shape in a green screen video. Became an instant meme on r/JackSucksAtLife." },
+                { "Jack Humping a Plant", "From the 1M Gold Play Button video. Jack picks up a pot plant and... you know. Community classic." },
+                { "Jack's Wee Wee Bush", "A bush in Egleton, Rutland that Jack urinated in during GeoGuessr IRL. People take photos with it." },
+                { "Kong (RIP)", "Jack's beloved dog who appeared in many videos. Kong was a cherished presence. He has since passed away." },
+                { "Kazoo Madness", "Jack played kazoos constantly. Tried Guinness records for longest kazoo chain and most kazoos in mouth. Failed both." },
+                { "The Q Key Incident", "In One Life SMP, Jack dropped his best sword because Q was bound to drop. Lost the deathmatch with dirt." },
+                { "Big Daddy", "A compilation meme that the community keeps alive. Connected to the Big Daddy Jackpack card." },
+                { "turd boi420", "Jack's legendary old Minecraft username. A piece of JSAL history." },
+                { "Pink Tesla", "Jack wrapped his Tesla pink when Don't Subscribe hit 100K. Unwrapped it in May 2022." },
+                { "Zigzag Thumbnails", "Jack's signature thumbnail style. 'Did everyone just forget this template exists?'" },
+                { "I Said a Joke, Not a Poem!", "Jack's response when someone wrote a poem instead of telling a joke in a Minecraft server." },
+                { "Lava Chicken", "A song/reference from Jack's content. Fans request he sing it." },
+                { "Jackpillar Cards", "Community trading cards featuring Jack. Popular meme and collectible." },
+                { "No Context JSAL", "Daily clips channel. Posts Jack saying/doing weird stuff every day at 19:15 UK time." },
+                { "Disappointed KSI", "Jack encourages fans to keep this meme alive in wider circles." },
+                { "Fufik/PAW Patrol", "Animated content that caused an Elsagate controversy. Jack made the videos private." },
+                { "SamSmellsOfApricots", "Jack's very first channel. Comedy sketches with school friends. 140K+ subs from pure nostalgia." },
+                { "The Attic Tour", "Fans loved the attic tour for its nostalgia. 'I don't know why people loved it so much.'" }
+            };
+
+            for (int i = 0; i < memes.GetLength(0); i++)
+            {
+                var card = new Panel();
+                card.Size = new Size(640, 65);
+                card.BackColor = Color.FromArgb(25, 25, 40);
+                card.Margin = new Padding(5);
+
+                var lblMeme = new Label { Text = memes[i, 0], Font = new Font("Segoe UI", 10, FontStyle.Bold), ForeColor = Color.FromArgb(0, 200, 100), AutoSize = true, Location = new Point(10, 5) };
+                var lblAbout = new Label { Text = memes[i, 1], Font = descFont, ForeColor = text, AutoSize = true, MaximumSize = new Size(620, 0), Location = new Point(10, 28) };
+
+                card.Controls.AddRange(new Control[] { lblMeme, lblAbout });
+                pnlMemes.Controls.Add(card);
+            }
+            tabMemes.Controls.Add(pnlMemes);
+
+            // === TAB 3: Channel Tracker ===
+            var tabChannels = new TabPage("Channels");
+            tabChannels.BackColor = Color.FromArgb(15, 15, 25);
+            var pnlChannels = new FlowLayoutPanel();
+            pnlChannels.Dock = DockStyle.Fill;
+            pnlChannels.AutoScroll = true;
+            pnlChannels.BackColor = Color.FromArgb(15, 15, 25);
+            pnlChannels.Padding = new Padding(10);
+
+            string[,] channels = {
+                { "JackSucksAtLife", "4.61M subs", "Main channel. Play buttons, reactions, YouTube analytics.", "2013" },
+                { "JackSucksAtStuff", "1.5M subs", "Reddit videos, miscellaneous content. Second channel.", "2014" },
+                { "JackSucksAtGeography", "1.2M subs", "Geography content. Countries, maps, trivia.", "2020" },
+                { "Geography Stuff", "500K+", "Geography shorts and educational content.", "2020" },
+                { "Don't Subscribe", "1M subs", "MrBeast collab. Jack won $100K. Challenge completed.", "2022" },
+                { "JackMasseyWelsh", "200K+", "Tesla content. Pink wrap era. Now inactive.", "2019" },
+                { "turbo420", "Legacy", "Jack's old Minecraft channel. A piece of history.", "2013" },
+                { "SamSmellsOfApricots", "140K+", "First ever channel. Comedy sketches with school friends.", "2011" },
+                { "No Context JSAL", "300K+", "Daily clips of Jack saying weird stuff. 19:15 UK time.", "2021" },
+                { "JackSucksAtEspañol", "200K+", "Spanish content. 'El Canal de Youtube Mas Popular Que MrBeast.'", "2021" },
+                { "JackSucksAtClips", "100K+", "Clips from main channel content.", "2021" },
+                { "JackSucksAtPopUp Pirate", "100K+", "Pop Up Pirate game videos with subscribers.", "2022" },
+                { "Long Channel Name #1", "50K+", "Exactly what it says. A long channel name.", "2022" },
+                { "Long Channel Name #2", "50K+", "The sequel. Even longer name.", "2022" },
+                { "ejsafc", "Legacy", "Mystery channel. Part of the empire.", "Unknown" },
+                { "JacksEpicYoutubeChannel...", "100K+", "THE longest channel name. Over 500 characters.", "2022" },
+                { "JackMasseyWelsh (shorts)", "100K+", "Shorts channel with Jack's full name.", "2022" }
+            };
+
+            for (int i = 0; i < channels.GetLength(0); i++)
+            {
+                var card = new Panel();
+                card.Size = new Size(640, 65);
+                card.BackColor = Color.FromArgb(25, 25, 40);
+                card.Margin = new Padding(5);
+
+                var lblCh = new Label { Text = channels[i, 0] + "  [" + channels[i, 1] + "]", Font = new Font("Segoe UI", 9, FontStyle.Bold), ForeColor = Color.FromArgb(100, 150, 255), AutoSize = true, Location = new Point(10, 5) };
+                var lblInfo = new Label { Text = channels[i, 2] + "  (Since " + channels[i, 3] + ")", Font = descFont, ForeColor = text, AutoSize = true, MaximumSize = new Size(620, 0), Location = new Point(10, 28) };
+
+                card.Controls.AddRange(new Control[] { lblCh, lblInfo });
+                pnlChannels.Controls.Add(card);
+            }
+            tabChannels.Controls.Add(pnlChannels);
+
+            // === TAB 4: Quote Board ===
+            var tabQuotes = new TabPage("Quotes");
+            tabQuotes.BackColor = Color.FromArgb(15, 15, 25);
+            var pnlQuotes = new FlowLayoutPanel();
+            pnlQuotes.Dock = DockStyle.Fill;
+            pnlQuotes.AutoScroll = true;
+            pnlQuotes.BackColor = Color.FromArgb(15, 15, 25);
+            pnlQuotes.Padding = new Padding(10);
+
+            string[,] quotes = {
+                { "I AM A RHOMBUS!", "Green screen video" },
+                { "I said a joke, not a poem!", "Minecraft server Q&A" },
+                { "I've activated my... [cut off]", "One Life SMP" },
+                { "Kong unfortunaely is a trex now", "Jack's message about Kong costume" },
+                { "How RARE Is Your BODY?", "Video title" },
+                { "I make Youtube videos about Youtube.", "Self-description" },
+                { "Editor Kai, I feel like me and you don't do enough cool montages", "Pointing at stuff montage" },
+                { "I do not remember doing that", "Reddit video reaction" },
+                { "The content's not been great on the Reddit for a little while", "Being honest about the subreddit" },
+                { "I'm slowly getting better [about wrists]", "Obscure facts segment" },
+                { "I will NEVER get locked out my Tesla", "Tesla channel short" },
+                { "This is the new Pewdiepie vs TSeries", "Title change history" },
+                { "I forgot about this secret channel I made...", "Discovering old channels" },
+                { "There is a hair stuck inside my Diamond Play Button", "Play button problem" },
+                { "Why Jagu? Why?", "Reddit reaction" },
+                { "I've activated my trap card!", "Yu-Gi-Oh reference in gaming" },
+                { "I've been sent a CUSTOM 1,000,000 Subscriber Gold Play Button!!!", "Video title" },
+                { "We made a game for Jack. It's a cozy little idol game.", "Fan game announcement" }
+            };
+
+            for (int i = 0; i < quotes.GetLength(0); i++)
+            {
+                var card = new Panel();
+                card.Size = new Size(640, 50);
+                card.BackColor = Color.FromArgb(25, 25, 40);
+                card.Margin = new Padding(5);
+
+                var lblQuote = new Label { Text = "\"" + quotes[i, 0] + "\"", Font = new Font("Segoe UI", 9, FontStyle.Italic), ForeColor = Color.FromArgb(255, 220, 100), AutoSize = true, MaximumSize = new Size(450, 0), Location = new Point(10, 5) };
+                var lblSource = new Label { Text = "— " + quotes[i, 1], Font = descFont, ForeColor = Color.FromArgb(100, 100, 120), AutoSize = true, Location = new Point(10, 30) };
+
+                card.Controls.AddRange(new Control[] { lblQuote, lblSource });
+                pnlQuotes.Controls.Add(card);
+            }
+            tabQuotes.Controls.Add(pnlQuotes);
+
+            // === TAB 5: Mini-Game (Kazoo Clicker) ===
+            var tabGame = new TabPage("Kazoo Clicker");
+            tabGame.BackColor = Color.FromArgb(15, 15, 25);
+
+            int kazooPoints = 0;
+            int kazooCombo = 0;
+            int kazooClicks = 0;
+            string[] kazooSounds = { "BZZZ!", "TOOT!", "HONK!", "WEE!", "BRRR!", "PEEP!", "TWEET!", "PFFT!" };
+            Random kazooRng = new Random();
+
+            var lblKazooTitle = new Label { Text = "KAZOO CLICKER", Font = titleFont2, ForeColor = accent, AutoSize = true, Location = new Point(220, 20) };
+            var lblKazooScore = new Label { Text = "Points: 0", Font = new Font("Segoe UI", 12), ForeColor = text, AutoSize = true, Location = new Point(250, 60) };
+            var lblKazooCombo = new Label { Text = "Combo: 0x", Font = new Font("Segoe UI", 10), ForeColor = Color.FromArgb(255, 200, 0), AutoSize = true, Location = new Point(270, 90) };
+            var lblKazooClicks = new Label { Text = "Total clicks: 0", Font = descFont, ForeColor = Color.FromArgb(100, 100, 120), AutoSize = true, Location = new Point(260, 120) };
+            var lblKazooSound = new Label { Text = "", Font = new Font("Segoe UI", 16, FontStyle.Bold), ForeColor = Color.FromArgb(0, 255, 100), AutoSize = true, Location = new Point(280, 160) };
+
+            var btnKazoo = new Button();
+            btnKazoo.Text = "PLAY THE KAZOO!";
+            btnKazoo.Size = new Size(200, 80);
+            btnKazoo.Location = new Point(200, 210);
+            btnKazoo.FlatStyle = FlatStyle.Flat;
+            btnKazoo.BackColor = Color.FromArgb(180, 50, 50);
+            btnKazoo.ForeColor = Color.White;
+            btnKazoo.Font = new Font("Segoe UI", 12, FontStyle.Bold);
+            btnKazoo.Cursor = Cursors.Hand;
+            btnKazoo.FlatAppearance.BorderSize = 0;
+
+            var btnReset = new Button();
+            btnReset.Text = "Reset";
+            btnReset.Size = new Size(80, 30);
+            btnReset.Location = new Point(310, 300);
+            btnReset.FlatStyle = FlatStyle.Flat;
+            btnReset.BackColor = Color.FromArgb(60, 60, 80);
+            btnReset.ForeColor = Color.White;
+            btnReset.Font = descFont;
+            btnReset.FlatAppearance.BorderSize = 0;
+
+            var lblMilestone = new Label { Text = "", Font = new Font("Segoe UI", 10, FontStyle.Bold), ForeColor = Color.FromArgb(255, 150, 0), AutoSize = true, Location = new Point(200, 340) };
+
+            string[] milestones = { "10 clicks: Kazoo Kid", "50 clicks: Kazoo Master", "100 clicks: Kazoo Legend", "250 clicks: Kazoo God", "500 clicks: JACK SAWS AT KAZOO", "1000 clicks: I AM A KAZOOHMBUS!" };
+
+            btnKazoo.Click += (s, e) =>
+            {
+                kazooClicks++;
+                kazooCombo++;
+                int basePoints = kazooRng.Next(1, 11);
+                int comboBonus = kazooCombo / 10;
+                int points = basePoints + comboBonus;
+                kazooPoints += points;
+
+                lblKazooScore.Text = "Points: " + kazooPoints;
+                lblKazooCombo.Text = "Combo: " + kazooCombo + "x (+" + comboBonus + " bonus)";
+                lblKazooClicks.Text = "Total clicks: " + kazooClicks;
+                lblKazooSound.Text = kazooSounds[kazooRng.Next(kazooSounds.Length)] + " +" + points;
+
+                if (kazooClicks == 10) lblMilestone.Text = "MILESTONE: Kazoo Kid unlocked!";
+                else if (kazooClicks == 50) lblMilestone.Text = "MILESTONE: Kazoo Master unlocked!";
+                else if (kazooClicks == 100) lblMilestone.Text = "MILESTONE: Kazoo Legend unlocked!";
+                else if (kazooClicks == 250) lblMilestone.Text = "MILESTONE: Kazoo God unlocked!";
+                else if (kazooClicks == 500) lblMilestone.Text = "MILESTONE: JACK SAWS AT KAZOO!";
+                else if (kazooClicks == 1000) lblMilestone.Text = "MILESTONE: I AM A KAZOOHMBUS!";
+
+                if (kazooCombo % 50 == 0 && kazooCombo > 0)
+                {
+                    lblKazooSound.Text = "MEGA COMBO x" + kazooCombo + "!";
+                    kazooPoints += kazooCombo;
+                    lblKazooScore.Text = "Points: " + kazooPoints;
+                }
+            };
+
+            btnReset.Click += (s, e) =>
+            {
+                kazooPoints = 0;
+                kazooCombo = 0;
+                kazooClicks = 0;
+                lblKazooScore.Text = "Points: 0";
+                lblKazooCombo.Text = "Combo: 0x";
+                lblKazooClicks.Text = "Total clicks: 0";
+                lblKazooSound.Text = "";
+                lblMilestone.Text = "";
+            };
+
+            tabGame.Controls.AddRange(new Control[] { lblKazooTitle, lblKazooScore, lblKazooCombo, lblKazooClicks, lblKazooSound, btnKazoo, btnReset, lblMilestone });
+
+            // === TAB 6: Fun Facts ===
+            var tabFacts = new TabPage("Fun Facts");
+            tabFacts.BackColor = Color.FromArgb(15, 15, 25);
+            var pnlFacts = new FlowLayoutPanel();
+            pnlFacts.Dock = DockStyle.Fill;
+            pnlFacts.AutoScroll = true;
+            pnlFacts.BackColor = Color.FromArgb(15, 15, 25);
+            pnlFacts.Padding = new Padding(10);
+
+            string[] facts = {
+                "Jack was born on June 24, 1996 in England.",
+                "He holds a Guinness World Record for most YouTube channels over 100K subs.",
+                "His first YouTube channel was SamSmellsOfApricots (2011).",
+                "JackSucksAtLife was originally called JackSucksAtMinecraft.",
+                "He has 19+ YouTube channels.",
+                "Don't Subscribe earned him $100K from MrBeast.",
+                "He donated 30% of the Don't Subscribe money to charity.",
+                "He sent MrBeast's 100M Play Button into space.",
+                "His dog Kong has passed away but is remembered fondly.",
+                "He tried to set a Guinness record for longest kazoo chain. Failed.",
+                "He tried to set a Guinness record for most kazoos in mouth. Only got 4 in. Failed.",
+                "The 'Wee Wee Bush' is in Egleton, Rutland, England.",
+                "He wrapped his Tesla pink for the Don't Subscribe milestone.",
+                "He has a girlfriend named Becky who edits his videos.",
+                "His editor is named Kai.",
+                "He once dropped his best sword in One Life SMP because Q was bound to drop.",
+                "He has a custom green wooden 1K play button made by his dad.",
+                "He's afraid of wrists (finds them uncomfortable).",
+                "He has a 86% positivity rating on his subreddit.",
+                "No Context JSAL posts daily clips at 19:15 UK time.",
+                "He made a video called 'How RARE Is Your BODY?' with only 7 minutes of recording.",
+                "He once said 'I make Youtube videos about Youtube' as his job description."
+            };
+
+            for (int i = 0; i < facts.Length; i++)
+            {
+                var card = new Panel();
+                card.Size = new Size(640, 35);
+                card.BackColor = Color.FromArgb(25, 25, 40);
+                card.Margin = new Padding(5);
+
+                var lblFact = new Label { Text = (i + 1) + ". " + facts[i], Font = descFont, ForeColor = text, AutoSize = true, MaximumSize = new Size(620, 0), Location = new Point(10, 8) };
+
+                card.Controls.Add(lblFact);
+                pnlFacts.Controls.Add(card);
+            }
+            tabFacts.Controls.Add(pnlFacts);
+
+            // Add all tabs
+            tabs.TabPages.AddRange(new TabPage[] { tabButtons, tabMemes, tabChannels, tabQuotes, tabGame, tabFacts });
+            f.Controls.Add(tabs);
+            f.FormClosed += (s, e) => { titleFont2.Dispose(); itemFont.Dispose(); descFont.Dispose(); };
+            f.Show();
+            SetStatus("JacksUniverse opened");
         }
     }
 }
