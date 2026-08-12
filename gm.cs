@@ -198,21 +198,28 @@ class GM : Form
         try
         {
             File.AppendAllText(logFile, "ShowUpdateNotification: statusRef=" + (statusRef == null ? "NULL" : "OK") + "\n");
-            if (statusRef == null) return;
-            File.AppendAllText(logFile, "ShowUpdateNotification: InvokeRequired=" + statusRef.InvokeRequired + "\n");
-            if (statusRef.InvokeRequired)
+            if (statusRef != null && !statusRef.IsDisposed)
             {
-                statusRef.BeginInvoke((Action)(() => ShowUpdateNotification()));
-                return;
+                if (statusRef.InvokeRequired)
+                {
+                    statusRef.BeginInvoke((Action)(() => ShowUpdateNotification()));
+                    return;
+                }
+                statusRef.Text = "Update v" + remoteVersion + " ready! Click here to restart.";
+                statusRef.ForeColor = Color.FromArgb(0, 200, 100);
+                statusRef.Cursor = Cursors.Hand;
+                if (!updateNotificationShown)
+                {
+                    updateNotificationShown = true;
+                    statusRef.Click += (s, e) => ApplyUpdateAndRestart();
+                }
             }
-            File.AppendAllText(logFile, "ShowUpdateNotification: setting text to green\n");
-            statusRef.Text = "Update v" + remoteVersion + " ready! Click here to restart.";
-            statusRef.ForeColor = Color.FromArgb(0, 200, 100);
-            statusRef.Cursor = Cursors.Hand;
+            File.AppendAllText(logFile, "Showing MessageBox\n");
             if (!updateNotificationShown)
             {
                 updateNotificationShown = true;
-                statusRef.Click += (s, e) => ApplyUpdateAndRestart();
+                DialogResult dr = MessageBox.Show("GM v" + remoteVersion + " is ready!\n\nClick Yes to update and restart, or No to update later.", "GM Update Available", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
+                if (dr == DialogResult.Yes) ApplyUpdateAndRestart();
             }
             File.AppendAllText(logFile, "ShowUpdateNotification: DONE\n");
         }
