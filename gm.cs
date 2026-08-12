@@ -47,7 +47,7 @@ class GM : Form
     static Dictionary<string, int> toolUsage = new Dictionary<string, int>();
     static string statsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "gm_stats.txt");
     static DateTime sessionStart = DateTime.Now;
-    static string currentVersion = "2.9.5";
+    static string currentVersion = "2.9.6";
     static string updateUrl = "https://raw.githubusercontent.com/NuIlbyte/GM/main/version.txt";
     static volatile string pendingUpdateFile = null;
     static volatile bool updateAvailable = false;
@@ -6623,7 +6623,7 @@ class GM : Form
             y += gap + 10;
 
             statusLabel = new Label { Text = "Ready", Font = statusFont, ForeColor = Color.FromArgb(60, 60, 80), AutoSize = true, Location = new Point(20, y + 5) };
-            var footer = new Label { Text = "Developed by nu1lbyte", Font = footFont, ForeColor = Color.FromArgb(50, 50, 60), AutoSize = true, Location = new Point(175, y + 10) };
+            var footer = new Label { Text = "Developed by nu1lbyte", Font = footFont, ForeColor = Color.FromArgb(60, 70, 90), AutoSize = true, Location = new Point(175, y + 10) };
 
             this.KeyPreview = true;
             this.KeyDown += (s, e) =>
