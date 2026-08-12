@@ -138,9 +138,11 @@ class GM : Form
 
     static void AutoUpdateCheck()
     {
+        string logFile = Path.Combine(Path.GetTempPath(), "gm_update_log.txt");
         try
         {
             System.Threading.Thread.Sleep(5000);
+            File.WriteAllText(logFile, "AutoUpdateCheck started at " + DateTime.Now + "\n");
             ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
             string remote = "";
             using (WebClient wc = new WebClient())
@@ -148,8 +150,10 @@ class GM : Form
                 wc.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
                 remote = wc.DownloadString(updateUrl).Trim();
             }
+            File.AppendAllText(logFile, "Remote: '" + remote + "' Local: '" + currentVersion + "'\n");
             if (IsNewerVersion(remote, currentVersion))
             {
+                File.AppendAllText(logFile, "Update available! Downloading...\n");
                 remoteVersion = remote;
                 updateAvailable = true;
                 string tempFile = Path.Combine(Path.GetTempPath(), "gm_update_" + remote + ".exe");
@@ -157,12 +161,15 @@ class GM : Form
                 {
                     wc.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
                     string directUrl = "https://github.com/NuIlbyte/GM/releases/download/v" + remote + "/gm.exe";
+                    File.AppendAllText(logFile, "Downloading from: " + directUrl + "\n");
                     wc.DownloadFile(directUrl, tempFile);
                 }
                 FileInfo fi = new FileInfo(tempFile);
+                File.AppendAllText(logFile, "Downloaded: " + fi.Exists + " Size: " + (fi.Exists ? fi.Length.ToString() : "0") + "\n");
                 if (fi.Exists && fi.Length > 102400)
                 {
                     pendingUpdateFile = tempFile;
+                    File.AppendAllText(logFile, "Calling ShowUpdateNotification\n");
                     ShowUpdateNotification();
                 }
                 else
@@ -170,8 +177,15 @@ class GM : Form
                     try { File.Delete(tempFile); } catch { }
                 }
             }
+            else
+            {
+                File.AppendAllText(logFile, "No update needed\n");
+            }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            try { File.AppendAllText(logFile, "ERROR: " + ex.Message + "\n" + ex.StackTrace + "\n"); } catch { }
+        }
     }
 
     static volatile bool updateNotificationShown = false;
@@ -220,16 +234,23 @@ class GM : Form
 
     static void ApplyUpdateAndRestart()
     {
+        string logFile = Path.Combine(Path.GetTempPath(), "gm_update_log.txt");
         try
         {
+            File.WriteAllText(logFile, "ApplyUpdateAndRestart called at " + DateTime.Now + "\n");
+            File.AppendAllText(logFile, "pendingUpdateFile: " + (pendingUpdateFile ?? "null") + "\n");
             if (pendingUpdateFile == null || pendingUpdateFile.Length == 0 || !File.Exists(pendingUpdateFile))
             {
+                File.AppendAllText(logFile, "No update file found, aborting\n");
                 MessageBox.Show("No update file found.", "GM Update", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
             string currentExe = Application.ExecutablePath;
             string backup = currentExe + ".old";
             string batFile = Path.Combine(Path.GetTempPath(), "gm_update_apply.bat");
+            File.AppendAllText(logFile, "currentExe: " + currentExe + "\n");
+            File.AppendAllText(logFile, "backup: " + backup + "\n");
+            File.AppendAllText(logFile, "batFile: " + batFile + "\n");
             if (File.Exists(backup)) { try { File.Delete(backup); } catch { } }
             string batContent = "@echo off\r\n" +
                 "taskkill /f /im gm.exe >nul 2>&1\r\n" +
@@ -244,10 +265,16 @@ class GM : Form
                 "start \"\" \"" + currentExe + "\"\r\n" +
                 "del \"%~f0\"\r\n";
             File.WriteAllText(batFile, batContent);
+            File.AppendAllText(logFile, "Batch script written, starting...\n");
             Process.Start(new ProcessStartInfo(batFile) { CreateNoWindow = true, UseShellExecute = false });
+            File.AppendAllText(logFile, "Calling Environment.Exit(0)\n");
             Environment.Exit(0);
         }
-        catch { MessageBox.Show("Update failed. Please download manually from GitHub.", "GM Update", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+        catch (Exception ex)
+        {
+            try { File.AppendAllText(logFile, "EXCEPTION: " + ex.Message + "\n" + ex.StackTrace + "\n"); } catch { }
+            MessageBox.Show("Update failed. Please download manually from GitHub.", "GM Update", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
     }
 
     static void AddToRecent(string name)
