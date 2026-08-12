@@ -194,14 +194,18 @@ class GM : Form
 
     static void ShowUpdateNotification()
     {
+        string logFile = Path.Combine(Path.GetTempPath(), "gm_update_log.txt");
         try
         {
+            File.AppendAllText(logFile, "ShowUpdateNotification: statusRef=" + (statusRef == null ? "NULL" : "OK") + "\n");
             if (statusRef == null) return;
+            File.AppendAllText(logFile, "ShowUpdateNotification: InvokeRequired=" + statusRef.InvokeRequired + "\n");
             if (statusRef.InvokeRequired)
             {
                 statusRef.BeginInvoke((Action)(() => ShowUpdateNotification()));
                 return;
             }
+            File.AppendAllText(logFile, "ShowUpdateNotification: setting text to green\n");
             statusRef.Text = "Update v" + remoteVersion + " ready! Click here to restart.";
             statusRef.ForeColor = Color.FromArgb(0, 200, 100);
             statusRef.Cursor = Cursors.Hand;
@@ -210,8 +214,12 @@ class GM : Form
                 updateNotificationShown = true;
                 statusRef.Click += (s, e) => ApplyUpdateAndRestart();
             }
+            File.AppendAllText(logFile, "ShowUpdateNotification: DONE\n");
         }
-        catch { }
+        catch (Exception ex)
+        {
+            try { File.AppendAllText(logFile, "ShowUpdateNotification EXCEPTION: " + ex.Message + "\n" + ex.StackTrace + "\n"); } catch { }
+        }
     }
 
     static bool IsNewerVersion(string remote, string local)
