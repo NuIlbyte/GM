@@ -197,14 +197,34 @@ class GM : Form
         string logFile = Path.Combine(Path.GetTempPath(), "gm_update_log.txt");
         try
         {
-            File.AppendAllText(logFile, "ShowUpdateNotification: statusRef=" + (statusRef == null ? "NULL" : "OK") + "\n");
+            File.AppendAllText(logFile, "ShowUpdateNotification called\n");
+            Form hubForm = null;
+            foreach (Form f in Application.OpenForms)
+            {
+                if (f is Hub) { hubForm = f; break; }
+            }
+            if (hubForm == null)
+            {
+                File.AppendAllText(logFile, "Hub form not found, retrying in 2s\n");
+                System.Threading.Thread.Sleep(2000);
+                foreach (Form f in Application.OpenForms)
+                {
+                    if (f is Hub) { hubForm = f; break; }
+                }
+            }
+            if (hubForm == null)
+            {
+                File.AppendAllText(logFile, "Hub form still null, giving up\n");
+                return;
+            }
+            File.AppendAllText(logFile, "Hub form found, InvokeRequired=" + hubForm.InvokeRequired + "\n");
+            if (hubForm.InvokeRequired)
+            {
+                hubForm.BeginInvoke((Action)(() => ShowUpdateNotification()));
+                return;
+            }
             if (statusRef != null && !statusRef.IsDisposed)
             {
-                if (statusRef.InvokeRequired)
-                {
-                    statusRef.BeginInvoke((Action)(() => ShowUpdateNotification()));
-                    return;
-                }
                 statusRef.Text = "Update v" + remoteVersion + " ready! Click here to restart.";
                 statusRef.ForeColor = Color.FromArgb(0, 200, 100);
                 statusRef.Cursor = Cursors.Hand;
@@ -214,18 +234,18 @@ class GM : Form
                     statusRef.Click += (s, e) => ApplyUpdateAndRestart();
                 }
             }
-            File.AppendAllText(logFile, "Showing MessageBox\n");
+            File.AppendAllText(logFile, "Showing MessageBox on UI thread\n");
             if (!updateNotificationShown)
             {
                 updateNotificationShown = true;
-                DialogResult dr = MessageBox.Show("GM v" + remoteVersion + " is ready!\n\nClick Yes to update and restart, or No to update later.", "GM Update Available", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
+                DialogResult dr = MessageBox.Show(hubForm, "GM v" + remoteVersion + " is ready!\n\nClick Yes to update and restart, or No to update later.", "GM Update Available", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
                 if (dr == DialogResult.Yes) ApplyUpdateAndRestart();
             }
-            File.AppendAllText(logFile, "ShowUpdateNotification: DONE\n");
+            File.AppendAllText(logFile, "ShowUpdateNotification DONE\n");
         }
         catch (Exception ex)
         {
-            try { File.AppendAllText(logFile, "ShowUpdateNotification EXCEPTION: " + ex.Message + "\n" + ex.StackTrace + "\n"); } catch { }
+            try { File.AppendAllText(logFile, "EXCEPTION: " + ex.Message + "\n" + ex.StackTrace + "\n"); } catch { }
         }
     }
 
