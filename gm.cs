@@ -22,6 +22,8 @@ class GM : Form
     [DllImport("user32.dll")] static extern void SendMessage(IntPtr h, uint m, IntPtr w, IntPtr l);
     [DllImport("user32.dll")] static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
     [DllImport("user32.dll")] static extern bool GetCursorPos(out Point lpPoint);
+    [DllImport("kernel32.dll")] static extern bool MoveFileEx(string lpExistingFileName, string lpNewFileName, int dwFlags);
+    const int MOVEFILE_DELAY_UNTIL_REBOOT = 4;
     [DllImport("gdi32.dll")] static extern uint GetPixel(IntPtr hdc, int nXPos, int nYPos);
     [DllImport("user32.dll")] static extern IntPtr GetDC(IntPtr hWnd);
     [DllImport("user32.dll")] static extern int ReleaseDC(IntPtr hWnd, IntPtr hDC);
@@ -249,24 +251,45 @@ class GM : Form
             string backup = currentExe + ".old";
             string batFile = Path.Combine(Path.GetTempPath(), "gm_update_apply.bat");
             File.AppendAllText(logFile, "currentExe: " + currentExe + "\n");
-            File.AppendAllText(logFile, "backup: " + backup + "\n");
-            File.AppendAllText(logFile, "batFile: " + batFile + "\n");
+            File.AppendAllText(logFile, "pendingUpdateFile: " + pendingUpdateFile + "\n");
             if (File.Exists(backup)) { try { File.Delete(backup); } catch { } }
+
             string batContent = "@echo off\r\n" +
-                "taskkill /f /im gm.exe >nul 2>&1\r\n" +
-                "timeout /t 3 /nobreak > nul\r\n" +
-                "for /l %%i in (1,1,10) do (\r\n" +
-                "  move /y \"" + currentExe + "\" \"" + backup + "\" >nul 2>&1 && goto :done\r\n" +
+                ":: Wait for gm.exe to fully exit\r\n" +
+                ":waitloop\r\n" +
+                "tasklist /fi \"imagename eq gm.exe\" | find /i \"gm.exe\" >nul 2>&1\r\n" +
+                "if not errorlevel 1 (\r\n" +
                 "  taskkill /f /im gm.exe >nul 2>&1\r\n" +
-                "  timeout /t 2 /nobreak > nul\r\n" +
+                "  timeout /t 1 /nobreak > nul\r\n" +
+                "  goto waitloop\r\n" +
                 ")\r\n" +
-                ":done\r\n" +
+                "timeout /t 2 /nobreak > nul\r\n" +
+                ":: Try to move the old exe\r\n" +
+                ":moveloop\r\n" +
+                "move /y \"" + currentExe + "\" \"" + backup + "\" >nul 2>&1\r\n" +
+                "if errorlevel 1 (\r\n" +
+                "  timeout /t 2 /nobreak > nul\r\n" +
+                "  goto moveloop\r\n" +
+                ")\r\n" +
+                ":: Copy new exe\r\n" +
                 "copy /y \"" + pendingUpdateFile + "\" \"" + currentExe + "\" >nul 2>&1\r\n" +
+                "if errorlevel 1 (\r\n" +
+                "  echo Update failed to copy. > \"" + logFile + "\"\r\n" +
+                "  goto end\r\n" +
+                ")\r\n" +
+                "echo Update applied successfully. > \"" + logFile + "\"\r\n" +
+                ":: Start new exe\r\n" +
                 "start \"\" \"" + currentExe + "\"\r\n" +
-                "del \"%~f0\"\r\n";
+                ":end\r\n" +
+                "del \"%~f0\" >nul 2>&1\r\n";
             File.WriteAllText(batFile, batContent);
             File.AppendAllText(logFile, "Batch script written, starting...\n");
-            Process.Start(new ProcessStartInfo(batFile) { CreateNoWindow = true, UseShellExecute = false });
+
+            ProcessStartInfo psi = new ProcessStartInfo("cmd.exe", "/c \"" + batFile + "\"");
+            psi.CreateNoWindow = true;
+            psi.UseShellExecute = false;
+            Process.Start(psi);
+
             File.AppendAllText(logFile, "Calling Environment.Exit(0)\n");
             Environment.Exit(0);
         }
